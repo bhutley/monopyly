@@ -1,1 +1,0 @@
-from .generous_sindhi import GenerousSindhiAI
