@@ -7,6 +7,7 @@ from .deal_response import DealResponse
 from .deal_result import DealResult
 from ..squares import Square, Property, Street
 from ..utility import Logger
+import random
 
 
 class Game(object):
@@ -48,12 +49,22 @@ class Game(object):
         GAME_OVER = 9
         GAME_NOT_OVER = 10
 
-    def __init__(self):
+    def __init__(self, rng=None, maximum_rounds=500, eminent_domain_round=200):
         '''
         The 'constructor'.
+
+        Pass an rng (a random.Random) to make the game reproducible. The
+        same rng drives the dice and both card decks, so two games played
+        with equally-seeded rngs and the same AIs play out identically.
+
+        maximum_rounds and eminent_domain_round let a shorter game be
+        played, which is useful when training reinforcement-learning AIs...
         '''
-        self.state = GameState()
-        self.dice = Dice()
+        # The random number generator used for the dice and the cards...
+        self._rng = rng if rng is not None else random.Random()
+
+        self.state = GameState(self._rng)
+        self.dice = Dice(self._rng)
         self.most_recent_total_dice_roll = 0
         self.status = Game.Action.GAME_NOT_OVER
 
@@ -61,8 +72,12 @@ class Game(object):
         self.winner = None
 
         # Rounds in the game...
-        self.maximum_rounds = 500
+        self.maximum_rounds = maximum_rounds
         self.number_of_rounds_played = 0
+
+        # The number of exceptions an AI can raise before it is
+        # disqualified from the game...
+        self.maximum_ai_exceptions = 10
 
         # True if we are in the make-deals phase...
         self._in_make_deals = False
@@ -77,7 +92,7 @@ class Game(object):
         # and re-auctioned at a specified turn if no houses have
         # been built by that time...
         self.eminent_domain = True
-        self.eminent_domain_round = 200
+        self.eminent_domain_round = eminent_domain_round
 
     def add_player(self, ai_info):
         '''
@@ -221,6 +236,10 @@ class Game(object):
         # We check if the player ran out of time this turn...
         if current_player.state.ai_processing_seconds_remaining <= 0.0:
             self._player_ran_out_of_time(current_player)
+
+        # We check if the player's AI has thrown too many exceptions...
+        elif current_player.state.ai_exception_count > self.maximum_ai_exceptions:
+            self._player_was_disqualified(current_player)
 
         Logger.dedent()
 
@@ -1077,10 +1096,29 @@ class Game(object):
         # We remove the player from the game...
         self._remove_player(current_player)
 
+    def _player_was_disqualified(self, current_player):
+        '''
+        Called when a player's AI has raised too many exceptions.
+        '''
+        Logger.log("{0} was disqualified after {1} AI exceptions".format(
+            current_player.name, current_player.state.ai_exception_count), Logger.WARNING)
+
+        # We notify all players that this player was disqualified...
+        for player in self.state.players:
+            player.call_ai(player.ai.player_was_disqualified, current_player)
+
+        # We remove the player from the game...
+        self._remove_player(current_player)
+
     def _remove_player(self, player):
         '''
         Removes the player from the game and returns all properties to the bank.
         '''
+        # The player may already have been removed, for example if they went
+        # bankrupt and ran out of time in the same turn...
+        if player not in self.state.players:
+            return
+
         # We return properties to the bank...
         board = self.state.board
         for property in player.state.properties:
@@ -1121,7 +1159,7 @@ class Game(object):
         # If there is only one player, then they have won...
         if(len(winning_players) == 1):
             self.winner = winning_players[0]
-            Logger.log("Game over. Winner is: {0}".format(self.winner.ai.get_name()))
+            Logger.log("Game over. Winner is: {0}".format(self.winner.name))
         else:
             self.winner = None
             Logger.log("Game over. Draw.")
@@ -1129,9 +1167,23 @@ class Game(object):
         # We notify all the players...
         maximum_rounds_played = (self.number_of_rounds_played == self.maximum_rounds)
         for player in self.state.players:
-            player.ai.game_over(self.winner, maximum_rounds_played)
+            self._notify_game_over(player, maximum_rounds_played)
         for player in self.state.bankrupt_players:
+            self._notify_game_over(player, maximum_rounds_played)
+
+    def _notify_game_over(self, player, maximum_rounds_played):
+        '''
+        Tells one player that the game is over.
+
+        This deliberately does not go through call_ai, as the game is over
+        so there is no point charging the AI for the time. We still have to
+        cope with the AI throwing, though...
+        '''
+        try:
             player.ai.game_over(self.winner, maximum_rounds_played)
+        except Exception as exception:
+            Logger.log("{0} raised {1} in game_over: {2}".format(
+                player.name, type(exception).__name__, exception), Logger.WARNING)
 
     def _check_eminent_domain_rule(self):
         '''

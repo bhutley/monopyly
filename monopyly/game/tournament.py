@@ -50,10 +50,19 @@ class Tournament(object):
             max_players_per_game,
             number_of_rounds,
             maximum_games,
-            permutations_or_combinations):
+            permutations_or_combinations,
+            rng=None):
         '''
         The 'constructor'
+
+        Pass an rng (a random.Random) to make the whole tournament
+        reproducible. It drives the choice of which games to play as well
+        as the dice and cards in every game...
         '''
+        # The random number generator used to choose games, and passed
+        # to each game we play...
+        self._rng = rng if rng is not None else random.Random()
+
         # We hold a list of _PlayerInfo objects - one for each plater...
         self.player_infos = dict()
         number_of_player_ais = len(player_ais)
@@ -166,11 +175,11 @@ class Tournament(object):
         # We may want to choose a random subset of these games...
         ais_per_game = list(ais_per_game)
         if self.max_games_per_round < len(ais_per_game):
-            ais_per_game = random.sample(ais_per_game, self.max_games_per_round)
+            ais_per_game = self._rng.sample(ais_per_game, self.max_games_per_round)
 
         for ais_for_this_game in ais_per_game:
             # Each permutation is a collection of player AIs. We play a game with these AIs...
-            game = Game()
+            game = Game(rng=self._rng)
             game.tournament = self
             game.eminent_domain = eminent_domain
             for ai in ais_for_this_game:

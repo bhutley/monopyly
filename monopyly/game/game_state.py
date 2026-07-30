@@ -11,13 +11,16 @@ class GameState(object):
     to make it simpler to pass game state to AIs.
     '''
 
-    def __init__(self):
+    def __init__(self, rng=None):
         '''
         The 'constructor'.
+
+        The rng (a random.Random) is passed to the board so that the
+        card decks can be made reproducible...
         '''
 
         # The board...
-        self.board = Board(self)
+        self.board = Board(self, rng)
 
         # The collection of players (Player objects) playing the game...
         self.players = []

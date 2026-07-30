@@ -49,6 +49,10 @@ class PlayerState(object):
         self.ai_processing_seconds_used = 0.0
         self.turns_played = 0
 
+        # The number of times this player's AI has raised an exception.
+        # The game disqualifies players who keep throwing...
+        self.ai_exception_count = 0
+
     def get_number_of_houses_and_hotels(self, board):
         '''
         Returns the number of houses and hotels owned by this player.

@@ -14,9 +14,12 @@ class Board(object):
     # A constant for the number of squares on the board...
     NUMBER_OF_SQUARES = 40
 
-    def __init__(self, game_state):
+    def __init__(self, game_state, rng=None):
         '''
         The 'constructor'.
+
+        The rng (a random.Random) is passed to the card decks so that
+        the cards taken can be made reproducible...
         '''
         # We hold a reference to the game-state so that we
         # can access the collection of players...
@@ -37,8 +40,8 @@ class Board(object):
         self._map_names_to_indexes()
 
         # The cards...
-        self.chance_deck = ChanceDeck()
-        self.community_chest_deck = CommunityChestDeck()
+        self.chance_deck = ChanceDeck(rng)
+        self.community_chest_deck = CommunityChestDeck(rng)
 
     def get_index_list(self, square_name):
         '''

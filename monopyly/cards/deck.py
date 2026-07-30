@@ -13,11 +13,15 @@ class Deck(object):
     prevent players from "peeking" at the cards.
     '''
 
-    def __init__(self):
+    def __init__(self, rng=None):
         '''
         The 'constructor'.
+
+        You can pass a random.Random to make the cards taken reproducible.
+        If you do not, we create our own...
         '''
         self.cards = []
+        self._rng = rng if rng is not None else random.Random()
 
     def take_card(self, game, player):
         '''
@@ -60,5 +64,5 @@ class Deck(object):
         '''
         Returns the index of the next card to take.
         '''
-        return random.randint(0, self.number_of_cards-1)
+        return self._rng.randint(0, self.number_of_cards-1)
 

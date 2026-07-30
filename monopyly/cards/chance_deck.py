@@ -14,11 +14,11 @@ class ChanceDeck(Deck):
     Manages the set of Chance cards.
     '''
 
-    def __init__(self):
+    def __init__(self, rng=None):
         '''
         The 'constructor'
         '''
-        super().__init__()
+        super().__init__(rng)
 
         # Advance to Mayfair...
         self.cards.append(AdvanceTo(Square.Name.MAYFAIR))

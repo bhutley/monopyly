@@ -15,11 +15,11 @@ class CommunityChestDeck(Deck):
     Manages the deck of Community Chest cards.
     '''
 
-    def __init__(self):
+    def __init__(self, rng=None):
         '''
         The 'constructor'
         '''
-        super().__init__()
+        super().__init__(rng)
 
         # Income Tax refund Collect £20...
         self.cards.append(RewardCard(20))
